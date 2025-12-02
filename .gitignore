@@ -1,0 +1,82 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Media files (uploaded by users)
+media/songs/*
+media/thumbnails/*
+!media/songs/.gitkeep
+!media/thumbnails/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# FastAPI
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ML Models (keep model files, ignore cache)
+*.pkl
+!app/models/*.pkl
+*.cbm
+!app/models/*.cbm
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
