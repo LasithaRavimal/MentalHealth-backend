@@ -1,79 +1,62 @@
-# app/routes/playlist_routes.py (DUMMY)
+from fastapi import APIRouter, Depends, HTTPException, status
+from bson import ObjectId
+from datetime import datetime
+from typing import List
 
-from fastapi import APIRouter, Depends
-from app.models import PlaylistResponse, Message, PlaylistCreate, PlaylistUpdate, PlaylistAddSong
+from app.db import get_db, PLAYLISTS_COLLECTION
+from app.models import (
+    PlaylistCreate, PlaylistUpdate, PlaylistResponse,
+    PlaylistAddSong, Message
+)
 from app.auth import get_current_user
 
 router = APIRouter(prefix="/playlists", tags=["playlists"])
 
-# Dummy in-memory playlist storage
-FAKE_PLAYLISTS = [
-    {
-        "id": "p1",
-        "user_id": "u1",
-        "name": "My Chill Playlist",
-        "description": "Relaxing music",
-        "song_ids": ["s1", "s2"],
-        "created_at": "2025-01-01T00:00:00"
-    }
-]
-
-
-@router.get("", response_model=list[PlaylistResponse])
+@router.get("", response_model=List[PlaylistResponse])
 async def list_playlists(current_user: dict = Depends(get_current_user)):
-    """Return fake playlists."""
-    return FAKE_PLAYLISTS
+    """Get all playlists for current user"""
+    db = get_db()
+    user_id = ObjectId(current_user["id"])
+    
+    playlists = list(db[PLAYLISTS_COLLECTION].find({"user_id": user_id}).sort("created_at", -1))
+    
+    return [
+        PlaylistResponse(
+            id=str(playlist["_id"]),
+            user_id=str(playlist["user_id"]),
+            name=playlist["name"],
+            description=playlist.get("description"),
+            song_ids=[str(sid) for sid in playlist.get("song_ids", [])],
+            created_at=playlist.get("created_at", datetime.utcnow()).isoformat()
+        )
+        for playlist in playlists
+    ]
 
-
-@router.post("", response_model=PlaylistResponse)
+@router.post("", response_model=PlaylistResponse, status_code=status.HTTP_201_CREATED)
 async def create_playlist(
-    data: PlaylistCreate,
+    playlist_data: PlaylistCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Return fake created playlist."""
-    new_playlist = {
-        "id": "new123",
-        "user_id": current_user["id"],
-        "name": data.name,
-        "description": data.description,
+    """Create a new playlist"""
+    db = get_db()
+    user_id = ObjectId(current_user["id"])
+    
+    playlist_doc = {
+        "user_id": user_id,
+        "name": playlist_data.name,
+        "description": playlist_data.description,
         "song_ids": [],
-        "created_at": "2025-01-01T00:00:00"
+        "created_at": datetime.utcnow(),
     }
-    return new_playlist
-
-
-@router.get("/{playlist_id}", response_model=PlaylistResponse)
-async def get_playlist(playlist_id: str, current_user: dict = Depends(get_current_user)):
-    """Return a fake playlist."""
-    return FAKE_PLAYLISTS[0]
-
-
-@router.put("/{playlist_id}", response_model=PlaylistResponse)
-async def update_playlist(
-    playlist_id: str,
-    data: PlaylistUpdate,
-    current_user: dict = Depends(get_current_user)
-):
-    """Return updated fake playlist."""
-    playlist = FAKE_PLAYLISTS[0]
-    playlist["name"] = data.name or playlist["name"]
-    playlist["description"] = data.description or playlist["description"]
-    return playlist
-
-
-@router.delete("/{playlist_id}", response_model=Message)
-async def delete_playlist(playlist_id: str, current_user: dict = Depends(get_current_user)):
-    """Fake delete."""
-    return Message(message="Playlist deleted (dummy)")
-
-
-@router.post("/{playlist_id}/songs", response_model=Message)
-async def add_song(playlist_id: str, data: PlaylistAddSong, current_user: dict = Depends(get_current_user)):
-    """Fake add song."""
-    return Message(message="Song added (dummy)")
-
-
-@router.delete("/{playlist_id}/songs/{song_id}", response_model=Message)
-async def remove_song(playlist_id: str, song_id: str, current_user: dict = Depends(get_current_user)):
-    """Fake remove song."""
-    return Message(message="Song removed (dummy)")
+    
+    result = db[PLAYLISTS_COLLECTION].insert_one(playlist_doc)
+    playlist_id = str(result.inserted_id)
+    
+    return PlaylistResponse(
+        id=playlist_id,
+        user_id=current_user["id"],
+        name=playlist_data.name,
+        description=playlist_data.description,
+        song_ids=[],
+        created_at=playlist_doc["created_at"].isoformat()
+    )
