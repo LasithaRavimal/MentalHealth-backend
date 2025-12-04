@@ -58,6 +58,8 @@ def load_models():
         logger.error(f"Error loading models: {e}")
         logger.warning("API will continue, but predictions will fail until models are available")
         raise
+
+
 # Feature Engineering Functions (replicated from ML.ipynb)
 
 def map_skip_intensity(x: str) -> int:
@@ -145,3 +147,69 @@ def map_session_length_score(x: str) -> int:
         return 4
     return 2
 
+
+def map_diversity_score(x: str) -> int:
+    """
+    'one category'        -> 1
+    '2-3 categories'      -> 2
+    'more than 3 categories' -> 3
+    """
+    if not x or not isinstance(x, str):
+        return 2
+    x = x.lower().strip()
+    if "one category" in x:
+        return 1
+    if "2-3" in x:
+        return 2
+    if "more than 3" in x:
+        return 3
+    return 2
+
+
+def map_volume_score(x: str) -> int:
+    """
+    'low' -> 1
+    'medium' -> 2
+    'high' -> 3
+    """
+    if not x or not isinstance(x, str):
+        return 2
+    x = x.lower().strip()
+    if "low" in x:
+        return 1
+    if "medium" in x:
+        return 2
+    if "high" in x:
+        return 3
+    return 2
+
+
+def map_mood_polarity(x: str) -> int:
+    """
+    Song mood polarity:
+    sad -> -1
+    calm -> 0
+    happy / energetic / energitic -> +1
+    """
+    if not x or not isinstance(x, str):
+        return 0
+    x = x.lower().strip()
+    if "sad" in x:
+        return -1
+    if "happy" in x or "energetic" in x or "energitic" in x:
+        return 1
+    if "calm" in x:
+        return 0
+    return 0
+
+
+def is_night_time(x: str) -> int:
+    """
+    Flag if listening time is night / midnight / late evening.
+    """
+    if not x or not isinstance(x, str):
+        return 0
+    x = x.lower().strip()
+    if "night" in x or "midnight" in x:
+        return 1
+    return 0
