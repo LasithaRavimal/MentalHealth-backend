@@ -58,3 +58,90 @@ def load_models():
         logger.error(f"Error loading models: {e}")
         logger.warning("API will continue, but predictions will fail until models are available")
         raise
+# Feature Engineering Functions (replicated from ML.ipynb)
+
+def map_skip_intensity(x: str) -> int:
+    """
+    Map skip rate text to intensity:
+    'never' -> 0 (no skip)
+    '1-2 times' -> 1
+    '3-5 times' -> 2
+    'more than 5 times' -> 3
+    """
+    if not x or not isinstance(x, str):
+        return 1
+    x = x.lower().strip()
+    if "never" in x:
+        return 0
+    if "1-2" in x:
+        return 1
+    if "3-5" in x:
+        return 2
+    if "more than 5" in x:
+        return 3
+    return 1
+
+
+def map_repeat_score(x: str) -> int:
+    """
+    Map repeat count:
+    'none' -> 0
+    '1-2 times' -> 1
+    '3-5 times' -> 2
+    'more than 5' -> 3
+    """
+    if not x or not isinstance(x, str):
+        return 0
+    x = x.lower().strip()
+    if "none" in x or "nan" in x:
+        return 0
+    if "1-2" in x:
+        return 1
+    if "3-5" in x:
+        return 2
+    if "more than 5" in x:
+        return 3
+    return 0
+
+
+def map_duration_score(x: str) -> int:
+    """
+    'less than 25%' -> 1
+    'around 50%' -> 2
+    'about 75%'  -> 3
+    'full song'  -> 4
+    """
+    if not x or not isinstance(x, str):
+        return 2
+    x = x.lower().strip()
+    if "less than 25" in x:
+        return 1
+    if "around 50" in x:
+        return 2
+    if "about 75" in x:
+        return 3
+    if "full song" in x:
+        return 4
+    return 2
+
+
+def map_session_length_score(x: str) -> int:
+    """
+    'less than 10 min' -> 1
+    '10-30 min'        -> 2
+    '30-60 min'        -> 3
+    'more than 1 hour' -> 4
+    """
+    if not x or not isinstance(x, str):
+        return 2
+    x = x.lower().strip()
+    if "less than 10" in x:
+        return 1
+    if "10-30" in x:
+        return 2
+    if "30-60" in x:
+        return 3
+    if "more than 1 hour" in x:
+        return 4
+    return 2
+
