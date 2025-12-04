@@ -160,3 +160,82 @@ async def delete_playlist(
         )
     
     return Message(message="Playlist deleted successfully")
+
+@router.post("/{playlist_id}/songs", response_model=Message)
+async def add_song_to_playlist(
+    playlist_id: str,
+    song_data: PlaylistAddSong,
+    current_user: dict = Depends(get_current_user)
+):
+    """Add a song to a playlist"""
+    db = get_db()
+    user_id = ObjectId(current_user["id"])
+    playlist_oid = ObjectId(playlist_id)
+    song_oid = ObjectId(song_data.song_id)
+    
+    # Verify ownership
+    playlist = db[PLAYLISTS_COLLECTION].find_one({
+        "_id": playlist_oid,
+        "user_id": user_id
+    })
+    
+    if not playlist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Playlist not found"
+        )
+    
+    # Verify song exists
+    song = db["songs"].find_one({"_id": song_oid})
+    if not song:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Song not found"
+        )
+    
+    # Add song if not already in playlist
+    song_ids = playlist.get("song_ids", [])
+    if song_oid not in song_ids:
+        song_ids.append(song_oid)
+        db[PLAYLISTS_COLLECTION].update_one(
+            {"_id": playlist_oid},
+            {"$set": {"song_ids": song_ids, "updated_at": datetime.utcnow()}}
+        )
+    
+    return Message(message="Song added to playlist")
+
+@router.delete("/{playlist_id}/songs/{song_id}", response_model=Message)
+async def remove_song_from_playlist(
+    playlist_id: str,
+    song_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Remove a song from a playlist"""
+    db = get_db()
+    user_id = ObjectId(current_user["id"])
+    playlist_oid = ObjectId(playlist_id)
+    song_oid = ObjectId(song_id)
+    
+    # Verify ownership
+    playlist = db[PLAYLISTS_COLLECTION].find_one({
+        "_id": playlist_oid,
+        "user_id": user_id
+    })
+    
+    if not playlist:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Playlist not found"
+        )
+    
+    # Remove song from playlist
+    song_ids = playlist.get("song_ids", [])
+    if song_oid in song_ids:
+        song_ids.remove(song_oid)
+        db[PLAYLISTS_COLLECTION].update_one(
+            {"_id": playlist_oid},
+            {"$set": {"song_ids": song_ids, "updated_at": datetime.utcnow()}}
+        )
+    
+    return Message(message="Song removed from playlist")
+
