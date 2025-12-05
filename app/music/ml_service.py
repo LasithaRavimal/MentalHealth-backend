@@ -328,3 +328,71 @@ def generate_explanations(aggregated_data: Dict[str, Any], skip_intensity: int, 
     elif engagement_score <= 3:
         explanations.append("Low engagement may indicate distraction or emotional disconnection.")
     
+    # Duration and completion analysis
+    if duration_score <= 2:
+        explanations.append("Low completion rates suggest difficulty maintaining focus.")
+    elif duration_score >= 3:
+        explanations.append("High completion rates indicate sustained attention and interest.")
+    
+    # Repeat behavior analysis
+    if repeat_score >= 2:
+        explanations.append("Frequent song repetition may indicate seeking comfort or emotional regulation.")
+    
+    # Session length analysis
+    if session_length_score <= 1:
+        explanations.append("Very short sessions may indicate restlessness or time constraints.")
+    elif session_length_score >= 3:
+        explanations.append("Extended listening sessions suggest deep engagement with music.")
+    
+    # Volume analysis
+    if volume_score >= 3:
+        explanations.append("High volume listening may indicate seeking intensity or emotional stimulation.")
+    elif volume_score <= 1:
+        explanations.append("Low volume listening suggests preference for subtle or background music.")
+    
+    # Time of day analysis
+    if is_night == 1:
+        explanations.append("Nighttime listening patterns may affect sleep and mood regulation.")
+    elif "morning" in listening_time:
+        explanations.append("Morning listening can help set a positive tone for the day.")
+    
+    # Default if no specific explanations generated
+    if not explanations:
+        explanations.append("Listening patterns show moderate engagement with music.")
+    
+    return explanations
+
+
+def predict_session(aggregated_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Predict stress and depression levels from aggregated session data.
+    
+    Args:
+        aggregated_data: Dict with session aggregated features
+        
+    Returns:
+        Dict with stress_level, stress_probs, depression_level, depression_probs, explanations
+    """
+    if stress_model is None or depression_model is None:
+        raise RuntimeError("Models not loaded. Call load_models() first.")
+    
+    # Calculate engineered features for explanations
+    skip_rate = aggregated_data.get("skip_rate_bucket", "never").lower().strip()
+    repeat_count = aggregated_data.get("repeat_bucket", "none").lower().strip()
+    duration_ratio = aggregated_data.get("duration_ratio_bucket", "around 50%").lower().strip()
+    session_length = aggregated_data.get("session_length_bucket", "10-30 min").lower().strip()
+    listening_time = aggregated_data.get("listening_time_of_day", "afternoon (11am-3pm)").lower().strip()
+    volume_level = aggregated_data.get("volume_level_bucket", "medium").lower().strip()
+    song_diversity = aggregated_data.get("song_diversity_bucket", "2-3 categories").lower().strip()
+    
+    skip_intensity = map_skip_intensity(skip_rate)
+    repeat_score = map_repeat_score(repeat_count)
+    duration_score = map_duration_score(duration_ratio)
+    session_length_score = map_session_length_score(session_length)
+    diversity_score = map_diversity_score(song_diversity)
+    volume_score = map_volume_score(volume_level)
+    song_category = aggregated_data.get("song_category_mode", "calm").lower().strip()
+    mood_polarity = map_mood_polarity(song_category)
+    is_night = is_night_time(listening_time)
+    engagement_score = duration_score + repeat_score + diversity_score + mood_polarity - skip_intensity
+    
