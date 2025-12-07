@@ -396,3 +396,50 @@ def predict_session(aggregated_data: Dict[str, Any]) -> Dict[str, Any]:
     is_night = is_night_time(listening_time)
     engagement_score = duration_score + repeat_score + diversity_score + mood_polarity - skip_intensity
     
+    # Prepare features for prediction
+    features_df = prepare_features_for_prediction(aggregated_data)
+    
+    # Get categorical feature indices
+    cat_features = model_metadata.get("categorical_features", [0, 1, 2, 3, 4, 5, 6, 7]) if model_metadata else [0, 1, 2, 3, 4, 5, 6, 7]
+    
+    # Create CatBoost Pool
+    from catboost import Pool
+    pool = Pool(features_df, cat_features=cat_features)
+    
+    # Predict stress
+    stress_pred = stress_model.predict(pool)[0]
+    stress_probs = stress_model.predict_proba(pool)[0]
+    stress_classes = stress_model.classes_
+    stress_probs_dict = {str(cls): float(prob) for cls, prob in zip(stress_classes, stress_probs)}
+    # Extract first element if array, otherwise convert to string
+    if isinstance(stress_pred, (list, tuple)):
+        stress_level = str(stress_pred[0]).lower().strip() if len(stress_pred) > 0 else "moderate"
+    else:
+        stress_level = str(stress_pred).lower().strip()
+    
+    # Predict depression
+    depression_pred = depression_model.predict(pool)[0]
+    depression_probs = depression_model.predict_proba(pool)[0]
+    depression_classes = depression_model.classes_
+    depression_probs_dict = {str(cls): float(prob) for cls, prob in zip(depression_classes, depression_probs)}
+    # Extract first element if array, otherwise convert to string
+    if isinstance(depression_pred, (list, tuple)):
+        depression_level = str(depression_pred[0]).lower().strip() if len(depression_pred) > 0 else "low"
+    else:
+        depression_level = str(depression_pred).lower().strip()
+    
+    # Generate explanations
+    explanations = generate_explanations(
+        aggregated_data, skip_intensity, repeat_score, duration_score,
+        session_length_score, diversity_score, volume_score, mood_polarity,
+        is_night, engagement_score
+    )
+    
+    return {
+        "stress_level": stress_level.title(),  # "Low", "Moderate", "High"
+        "stress_probs": stress_probs_dict,
+        "depression_level": depression_level.title(),  # "Low", "Moderate", "High"
+        "depression_probs": depression_probs_dict,
+        "explanations": explanations,
+    }
+
