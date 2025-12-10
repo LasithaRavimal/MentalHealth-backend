@@ -68,4 +68,59 @@ async def upload_song(
     thumbnail: Optional[UploadFile] = File(None),
     admin_user: dict = Depends(require_admin)
 ):
-  
+    """Upload a new song with thumbnail (admin only)"""
+    db = get_db()
+    
+    # Validate audio file type
+    if not file.filename.endswith(('.mp3', '.m4a', '.wav')):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only MP3, M4A, and WAV files are supported"
+        )
+    
+    # Save audio file
+    file_ext = Path(file.filename).suffix
+    file_id = ObjectId()
+    file_name = f"{file_id}{file_ext}"
+    file_path = settings.SONGS_DIR / file_name
+    
+    try:
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save file: {str(e)}"
+        )
+    
+    # Handle thumbnail upload
+    thumbnail_url = None
+    if thumbnail:
+        # Validate image type
+        if not thumbnail.filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Thumbnail must be an image file (JPG, PNG, GIF, WEBP)"
+            )
+        
+        thumb_ext = Path(thumbnail.filename).suffix
+        thumb_name = f"{file_id}{thumb_ext}"
+        thumb_path = settings.THUMBNAILS_DIR / thumb_name
+        
+        try:
+            # Resize image using Pillow
+            from PIL import Image
+            import io
+            
+            thumb_content = await thumbnail.read()
+            img = Image.open(io.BytesIO(thumb_content))
+            img.thumbnail((500, 500), Image.Resampling.LANCZOS)
+            img.save(thumb_path, format=img.format or 'JPEG', quality=85)
+            
+            thumbnail_url = f"/media/thumbnails/{thumb_name}"
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to process thumbnail: {str(e)}"
+            )
