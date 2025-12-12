@@ -126,3 +126,20 @@ def _calculate_session_length_bucket(started_at: datetime, ended_at: datetime) -
         return "30-60 min"
     else:
         return "More than 1 hour"
+
+
+def _get_listening_time_of_day(dt: datetime) -> str:
+    """Get listening time of day bucket"""
+    hour = dt.hour
+    
+    if 5 <= hour < 11:
+        return "Morning (5am-11am)"
+    elif 11 <= hour < 15:
+        return "Afternoon (11am-3pm)"
+    elif 15 <= hour < 20:
+        return "Evening (3pm-8pm)"
+    elif 20 <= hour < 24:
+        return "Night (8pm-12am)"
+    else:
+        return "Midnight (12am-5am)"
+
