@@ -2,7 +2,7 @@ import logging
 import asyncio
 from datetime import datetime, timedelta
 from app.db import get_db, SESSIONS_COLLECTION
-from app.ml_service import predict_session
+from app.music.ml_service import predict_session
 from app.utils.email_service import send_stress_alert, send_depression_alert
 from app.db import USERS_COLLECTION
 from bson import ObjectId
