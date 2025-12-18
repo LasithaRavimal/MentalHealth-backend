@@ -16,4 +16,4 @@ pip install -r requirements.txt
 
 4.Run the FastAPI server
 
-uvicorn app.utils.main:app --reload
+uvicorn app.main:app --reload
