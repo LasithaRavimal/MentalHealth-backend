@@ -174,3 +174,26 @@ class EmailConfigResponse(BaseModel):
 class Message(BaseModel):
     message: str
 
+
+# Schizophrenia Detection (SDE) Models
+
+class SDEPredictionResponse(BaseModel):
+    supportive_result: str = Field(
+        ...,
+        description="Clinical decision support result based on EEG analysis"
+    )
+    confidence_score: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Average model confidence score"
+    )
+    trials_analyzed: int = Field(
+        ...,
+        ge=1,
+        description="Number of EEG trials analyzed"
+    )
+    note: str = Field(
+        default="Clinical decision support only",
+        description="Disclaimer for clinical usage"
+    )
