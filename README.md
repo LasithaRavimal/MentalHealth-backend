@@ -1,6 +1,6 @@
 # 🧠 MentalHealth-backend
 
-> **M_Track Backend API** — AI-powered Music Behavior Analysis platform (FastAPI)
+> **M_Track Backend API** 
 
 ---
 
