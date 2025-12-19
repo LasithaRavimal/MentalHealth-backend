@@ -21,6 +21,11 @@ MODELS_DIR = BASE_DIR / "app" / "models"
 STRESS_MODEL_PATH = MODELS_DIR / "stress_model_catboost.cbm"
 DEPRESSION_MODEL_PATH = MODELS_DIR / "depression_model_catboost.cbm"
 MODEL_METADATA_PATH = MODELS_DIR / "model_metadata.pkl"
+# Face Emotion Model (Keras)
+FACE_MODEL_PATH = MODELS_DIR / "face_model.keras"
+FACE_IMG_SIZE = int(os.getenv("FACE_IMG_SIZE", "224"))
+FACE_CLASS_NAMES = os.getenv("FACE_CLASS_NAMES", "Angry,Fear,Happy,Sad").split(",")
+
 
 # Media Paths
 MEDIA_DIR = BASE_DIR / "media"
@@ -186,7 +191,19 @@ class Settings:
     @property
     def MODEL_METADATA_PATH(self) -> Path:
         return MODEL_METADATA_PATH
-    
+
+    @property
+    def FACE_MODEL_PATH(self) -> Path:
+        return FACE_MODEL_PATH
+
+    @property
+    def FACE_IMG_SIZE(self) -> int:
+        return FACE_IMG_SIZE
+
+    @property
+    def FACE_CLASS_NAMES(self) -> list[str]:
+        return [c.strip() for c in FACE_CLASS_NAMES if c.strip()]
+
     @property
     def SONGS_DIR(self) -> Path:
         return SONGS_DIR
