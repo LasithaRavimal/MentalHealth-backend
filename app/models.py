@@ -174,3 +174,46 @@ class EmailConfigResponse(BaseModel):
 class Message(BaseModel):
     message: str
 
+# Voice Analysis Models
+class VoiceAnalysisRequest(BaseModel):
+    """Request model for voice analysis - not used for file upload but for metadata"""
+    pass
+
+class VoiceFeatures(BaseModel):
+    """MFCC and other audio features extracted from voice"""
+    mfcc_mean: List[float]
+    mfcc_std: List[float]
+    pitch_mean: Optional[float] = None
+    pitch_std: Optional[float] = None
+    energy_mean: Optional[float] = None
+    energy_std: Optional[float] = None
+    zero_crossing_rate: Optional[float] = None
+
+class VoicePrediction(BaseModel):
+    """Mental health predictions from voice analysis"""
+    depression_level: str  # "Low", "Moderate", "High"
+    depression_score: float  # 0-1
+    anxiety_level: str  # "Low", "Moderate", "High"
+    anxiety_score: float  # 0-1
+    stress_level: str  # "Low", "Moderate", "High"
+    stress_score: float  # 0-1
+    confidence: float  # Overall confidence of predictions
+
+class VoiceAnalysisResponse(BaseModel):
+    """Response model for voice analysis"""
+    id: str
+    user_id: str
+    prediction: VoicePrediction
+    analyzed_at: datetime
+    audio_duration: float  # seconds
+    
+    class Config:
+        from_attributes = True
+
+class VoiceAnalysisHistoryResponse(BaseModel):
+    """Response model for user's voice analysis history"""
+    analyses: List[VoiceAnalysisResponse]
+    total: int
+    
+    class Config:
+        from_attributes = True
