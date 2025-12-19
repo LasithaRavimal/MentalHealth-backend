@@ -2,7 +2,7 @@ from fastapi import APIRouter, UploadFile, File
 import shutil
 import os
 
-from app.sde.app import predict_schizophrenia
+from app.sde.ml_service import predict_schizophrenia
 
 router = APIRouter(
     prefix="/sde",
