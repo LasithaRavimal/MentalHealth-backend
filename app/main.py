@@ -13,6 +13,9 @@ from app.db import connect_db, close_db
 from app.music.ml_service import load_models
 from app.routes import auth_routes, music_admin_routes, song_routes, session_routes, playlist_routes
 from app.music.session_cleanup import cleanup_inactive_sessions
+from app.sde.app import load_sde_model
+from app.routes import sde_routes
+
 
 # Suppress bcrypt warnings
 warnings.filterwarnings("ignore", message=".*bcrypt.*")
@@ -60,6 +63,8 @@ app.include_router(song_routes.router, prefix=API_V1_PREFIX)
 app.include_router(session_routes.router, prefix=API_V1_PREFIX)
 app.include_router(playlist_routes.router, prefix=API_V1_PREFIX)
 app.include_router(music_admin_routes.router, prefix=API_V1_PREFIX)
+app.include_router(sde_routes.router, prefix=API_V1_PREFIX)
+
 
 
 @app.on_event("startup")
