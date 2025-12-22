@@ -9,10 +9,10 @@ logger = logging.getLogger(__name__)
 
 # Audio constraints
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-MIN_DURATION = 10  # seconds
+MIN_DURATION = 3  # seconds (reduced for depression model)
 MAX_DURATION = 120  # seconds
 SAMPLE_RATE = 22050  # Standard for speech analysis
-N_MFCC = 13  # Number of MFCC coefficients
+N_MFCC = 40  # Changed to 40 for depression model
 
 
 def validate_audio_file(audio_bytes: bytes, filename: str) -> Optional[str]:
@@ -73,6 +73,7 @@ def process_audio_file(audio_bytes: bytes) -> Tuple[Dict[str, np.ndarray], float
 def extract_voice_features(y: np.ndarray, sr: int) -> Dict[str, np.ndarray]:
     """
     Extract MFCC and other voice features from audio signal.
+    Now extracts 40 MFCC coefficients for depression model compatibility.
     
     Args:
         y: Audio time series
@@ -83,7 +84,7 @@ def extract_voice_features(y: np.ndarray, sr: int) -> Dict[str, np.ndarray]:
     """
     features = {}
     
-    # 1. MFCC (Mel-frequency cepstral coefficients) - Most important for voice
+    # 1. MFCC (40 coefficients for depression model)
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=N_MFCC)
     features['mfcc_mean'] = np.mean(mfcc, axis=1)
     features['mfcc_std'] = np.std(mfcc, axis=1)
@@ -91,12 +92,11 @@ def extract_voice_features(y: np.ndarray, sr: int) -> Dict[str, np.ndarray]:
     # 2. Pitch (F0) - Voice fundamental frequency
     try:
         pitches, magnitudes = librosa.piptrack(y=y, sr=sr)
-        # Get pitch values where magnitude is highest
         pitch_values = []
         for t in range(pitches.shape[1]):
             index = magnitudes[:, t].argmax()
             pitch = pitches[index, t]
-            if pitch > 0:  # Valid pitch
+            if pitch > 0:
                 pitch_values.append(pitch)
         
         if pitch_values:
@@ -110,12 +110,12 @@ def extract_voice_features(y: np.ndarray, sr: int) -> Dict[str, np.ndarray]:
         features['pitch_mean'] = 0.0
         features['pitch_std'] = 0.0
     
-    # 3. Energy/RMS - Voice energy
+    # 3. Energy/RMS
     rms = librosa.feature.rms(y=y)
     features['energy_mean'] = float(np.mean(rms))
     features['energy_std'] = float(np.std(rms))
     
-    # 4. Zero Crossing Rate - Voice quality indicator
+    # 4. Zero Crossing Rate
     zcr = librosa.feature.zero_crossing_rate(y)
     features['zcr_mean'] = float(np.mean(zcr))
     features['zcr_std'] = float(np.std(zcr))
@@ -128,21 +128,5 @@ def extract_voice_features(y: np.ndarray, sr: int) -> Dict[str, np.ndarray]:
     spectral_rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
     features['spectral_rolloff_mean'] = float(np.mean(spectral_rolloff))
     
-    logger.debug(f"Extracted features: {list(features.keys())}")
+    logger.debug(f"Extracted features with {N_MFCC} MFCCs: {list(features.keys())}")
     return features
-
-
-def normalize_features(features: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
-    """
-    Normalize features to standard scale.
-    This should match the normalization used during model training.
-    """
-    # This is a placeholder - you should use the same scaler from your training
-    normalized = {}
-    for key, value in features.items():
-        if isinstance(value, np.ndarray):
-            # Simple z-score normalization
-            normalized[key] = (value - np.mean(value)) / (np.std(value) + 1e-8)
-        else:
-            normalized[key] = value
-    return normalized
