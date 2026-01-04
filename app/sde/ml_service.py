@@ -11,6 +11,12 @@ model = None
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "models" / "schizophrenia_model.h5"
 
+# ✅ EEG CHANNELS USED (MUST MATCH PREPROCESS)
+EEG_CHANNELS = [
+    "Fp1", "Fp2", "F3", "F4",
+    "C3", "C4", "P3", "P4", "O1"
+]
+
 
 def load_sde_model():
     global model
@@ -20,7 +26,6 @@ def load_sde_model():
         raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
 
     model = tf.keras.models.load_model(MODEL_PATH)
-
     logger.info("✅ SDE model loaded successfully")
 
 
@@ -32,9 +37,15 @@ def predict_schizophrenia(csv_path: str):
     if model is None:
         raise RuntimeError("SDE model not loaded")
 
-    X = preprocess_eeg(csv_path)
+    # Preprocess EEG
+    X = preprocess_eeg(csv_path)  # shape: (N, 9, 576, 1)
+
+    # Model prediction
     preds = model.predict(X)
     avg_prob = float(np.mean(preds))
+
+    # 🔹 EEG preview for visualization (first trial only)
+    eeg_preview = X[0, :, :, 0]   # shape: (9, 576)
 
     return {
         "supportive_result": (
@@ -44,5 +55,15 @@ def predict_schizophrenia(csv_path: str):
         ),
         "confidence_score": round(avg_prob, 4),
         "trials_analyzed": int(X.shape[0]),
-        "note": "Clinical decision support only"
+        "note": "Clinical decision support only",
+
+        # ✅ NEW FIELD FOR FRONTEND VISUALIZATION
+        "eeg_preview": {
+            "channels": [
+                "Ch4", "Ch5", "Ch6", "Ch7",
+                "Ch8", "Ch9", "Ch10", "Ch11", "Ch12"
+            ],
+            "signals": eeg_preview[:, :500].tolist()
+        }
     }
+
