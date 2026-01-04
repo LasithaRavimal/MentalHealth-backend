@@ -20,13 +20,7 @@ async def analyze_voice(
     audio: UploadFile = File(..., description="Audio file (WAV, MP3, M4A, OGG - max 10MB, 10-120 seconds)"),
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Analyze voice recording for depression, anxiety, and stress indicators.
     
-    - **audio**: Audio file to analyze (WAV, MP3, M4A, OGG format)
-    - Returns mental health predictions based on voice features
-    - Only authenticated users can access this endpoint
-    """
     try:
         # Validate file
         audio_bytes = await audio.read()
