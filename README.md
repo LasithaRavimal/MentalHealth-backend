@@ -18,7 +18,8 @@ Each module produces a model output, and the backend consolidates them into a st
 ---
 
 ## 🏗️ Architecture
-<img width="1902" height="757" alt="M_Track Architecture" src="https://github.com/user-attachments/assets/e845627c-35ac-4e13-b946-fd89f5861524" />
+
+<img width="1917" height="1125" alt="Picture2" src="https://github.com/user-attachments/assets/915913a5-59bd-4c73-933f-239852f34363" />
 
 ---
 
