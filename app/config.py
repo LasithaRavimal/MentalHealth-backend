@@ -6,7 +6,7 @@ from functools import lru_cache
 # MongoDB Configuration
 MONGO_URI = os.getenv(
     "MONGO_URI",
-    "mongodb+srv://dhananjayaonlinemoney_db_user:admin@cluster0.40zsh4i.mongodb.net/?appName=Cluster0",
+    "mongodb+srv://admin:1234@cluster0.2pome.mongodb.net/?appName=Cluster0",
 )
 DB_NAME = os.getenv("DB_NAME", "m_track_db")
 
