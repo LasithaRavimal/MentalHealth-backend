@@ -69,12 +69,6 @@ Thumbs.db
 .coverage
 htmlcov/
 
-# ML Models (keep model files, ignore cache)
-*.pkl
-!app/models/*.pkl
-*.cbm
-!app/models/*.cbm
-
 # Temporary files
 *.tmp
 *.temp
