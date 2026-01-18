@@ -31,4 +31,4 @@ SESSIONS_COLLECTION = "listening_sessions"
 FAVORITES_COLLECTION = "favorites"
 PLAYLISTS_COLLECTION = "playlists"
 EMAIL_CONFIG_COLLECTION = "email_config"
-
+VOICE_ANALYSIS_COLLECTION = "voice_analyses"
