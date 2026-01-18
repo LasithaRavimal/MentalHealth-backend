@@ -351,16 +351,9 @@ async def send_depression_alert(user_email: str, prediction_data: Dict[str, Any]
 def create_welcome_email_body(user_email: str, user_name: Optional[str] = None) -> Tuple[str, str]:
     """
     Create welcome email body for new user registration.
-    
-    Args:
-        user_email: User's email address
-        user_name: User's name (optional)
-        
-    Returns:
-        Tuple of (html_body, text_body)
     """
     display_name = user_name or user_email.split('@')[0]
-    
+
     html_body = f"""
     <!DOCTYPE html>
     <html>
@@ -372,106 +365,103 @@ def create_welcome_email_body(user_email: str, user_name: Optional[str] = None) 
             .content {{ background-color: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px; }}
             .feature {{ background-color: white; border-left: 4px solid #1DB954; padding: 15px; margin: 15px 0; }}
             .button {{ display: inline-block; background-color: #1DB954; color: white; padding: 12px 30px; text-decoration: none; border-radius: 9999px; font-weight: 700; margin: 20px 0; }}
-            .button:hover {{ background-color: #1ed760; }}
             .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1>Welcome to M_Track!</h1>
-                <p>AI-Based Music Behavior Analysis Platform</p>
+                <h1>Welcome to M_Track</h1>
+                <p>AI-Based Mental Health Detection Platform</p>
             </div>
+
             <div class="content">
-                <h2>Hi {display_name},</h2>
-                <p>Thank you for registering with M_Track! We're excited to have you on board.</p>
-                
-                <h3>What is M_Track?</h3>
-                <p>M_Track is an innovative platform that analyzes your music listening patterns to provide insights into your mental well-being, specifically stress and depression levels.</p>
-                
-                <h3>Key Features:</h3>
+                <h2>Hello {display_name},</h2>
+
+                <p>
+                    Welcome to <strong>M_Track</strong> – an AI-powered mental health detection system
+                    designed to identify early signs of <strong>stress and depression</strong>
+                    using multiple behavioral and biometric data sources.
+                </p>
+
+                <h3>Detection Methods Used in M_Track:</h3>
+
                 <div class="feature">
-                    <strong>🎵 Music Library:</strong> Upload and manage your favorite songs with categories and descriptions.
+                    <strong>🎵 Music Behavior Analysis</strong><br/>
+                    Analyze listening patterns such as skips, repeats, duration, and mood-based categories.
                 </div>
+
                 <div class="feature">
-                    <strong>📊 Session Analysis:</strong> Each listening session is automatically tracked and analyzed.
+                    <strong>🙂 Facial Expression Analysis</strong><br/>
+                    Detect emotional cues from facial movements and expressions.
                 </div>
+
                 <div class="feature">
-                    <strong>🧠 AI Predictions:</strong> Receive AI-powered insights about your stress and depression levels based on your listening behavior.
+                    <strong>🎤 Voice Signal Analysis</strong><br/>
+                    Identify emotional stress indicators from voice tone and speech patterns.
                 </div>
+
                 <div class="feature">
-                    <strong>📈 Personal Dashboard:</strong> View your session history, predictions, and trends over time.
+                    <strong>🧠 EEG Signal Analysis</strong><br/>
+                    Analyze brainwave signals to support mental state detection.
                 </div>
-                <div class="feature">
-                    <strong>🔔 Smart Alerts:</strong> Get notified when high stress or depression levels are detected.
-                </div>
-                
-                <h3>Getting Started:</h3>
+
+                <h3>How It Works:</h3>
                 <ol>
-                    <li>Log in to your account</li>
-                    <li>Start playing music from your library</li>
-                    <li>Each session will be automatically tracked</li>
-                    <li>At the end of each session, receive your personalized insights</li>
+                    <li>You interact naturally with the system (music, face, voice, EEG)</li>
+                    <li>Behavioral data is collected during sessions</li>
+                    <li>AI models analyze patterns</li>
+                    <li>Stress & depression levels are predicted</li>
                 </ol>
-                
+
                 <div style="text-align: center;">
-                    <a href="http://localhost:5173/home" class="button">Get Started</a>
+                    <a href="http://localhost:5173/home" class="button">Start Using M_Track</a>
                 </div>
-                
-                <p><strong>Privacy Note:</strong> Your data is stored securely and used only for providing you with personalized insights. We respect your privacy.</p>
-                
-                <p>If you have any questions or need support, please don't hesitate to reach out to us.</p>
-                
-                <p>Happy listening!</p>
-                <p><strong>The M_Track Team</strong></p>
-                
+
+                <p>
+                    <strong>Privacy Notice:</strong> Your data is processed securely and used only for
+                    research and mental well-being insights.
+                </p>
+
+                <p>Thank you for joining M_Track.</p>
+                <p><strong>– The M_Track Team</strong></p>
+
                 <div class="footer">
-                    <p>This is an automated email from M_Track - AI-Based Music Behavior Analysis Platform</p>
-                    <p>You received this email because you registered an account with this email address.</p>
+                    <p>This is an automated welcome email from M_Track</p>
                 </div>
             </div>
         </div>
     </body>
     </html>
     """
-    
+
     text_body = f"""
-Welcome to M_Track!
+Welcome to M_Track
 
-Hi {display_name},
+Hello {display_name},
 
-Thank you for registering with M_Track! We're excited to have you on board.
+Welcome to M_Track – an AI-based mental health detection platform.
 
-What is M_Track?
-M_Track is an innovative platform that analyzes your music listening patterns to provide insights into your mental well-being, specifically stress and depression levels.
+M_Track analyzes mental well-being using:
+- Music listening behavior
+- Facial expressions
+- Voice signals
+- EEG brainwave data
 
-Key Features:
-- Music Library: Upload and manage your favorite songs with categories and descriptions.
-- Session Analysis: Each listening session is automatically tracked and analyzed.
-- AI Predictions: Receive AI-powered insights about your stress and depression levels based on your listening behavior.
-- Personal Dashboard: View your session history, predictions, and trends over time.
-- Smart Alerts: Get notified when high stress or depression levels are detected.
+How it works:
+1. You interact naturally with the system
+2. Behavioral and biometric data is collected
+3. AI models analyze the data
+4. Stress and depression levels are predicted
 
-Getting Started:
-1. Log in to your account
-2. Start playing music from your library
-3. Each session will be automatically tracked
-4. At the end of each session, receive your personalized insights
+Your privacy is respected and data is handled securely.
 
-Privacy Note: Your data is stored securely and used only for providing you with personalized insights. We respect your privacy.
+Thank you for joining M_Track.
+– The M_Track Team
+"""
 
-If you have any questions or need support, please don't hesitate to reach out to us.
-
-Happy listening!
-
-The M_Track Team
-
----
-This is an automated email from M_Track - AI-Based Music Behavior Analysis Platform
-You received this email because you registered an account with this email address.
-    """
-    
     return html_body, text_body
+
 
 
 async def send_welcome_email(user_email: str, user_name: Optional[str] = None) -> bool:
