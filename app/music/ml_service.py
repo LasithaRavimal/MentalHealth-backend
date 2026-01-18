@@ -434,6 +434,20 @@ def predict_session(aggregated_data: Dict[str, Any]) -> Dict[str, Any]:
         session_length_score, diversity_score, volume_score, mood_polarity,
         is_night, engagement_score
     )
+
+    # =========================
+    # TERMINAL LOGGING HERE
+    # =========================
+    logger.info("===== SESSION PREDICTION RESULT =====")
+    logger.info(f"Stress Level : {stress_level.title()}")
+    logger.info(f"Stress Probabilities : {stress_probs_dict}")
+    logger.info(f"Depression Level : {depression_level.title()}")
+    logger.info(f"Depression Probabilities : {depression_probs_dict}")
+    logger.info(f"Engagement Score : {engagement_score}")
+    logger.info("Explanations:")
+    for exp in explanations:
+        logger.info(f" - {exp}")
+    logger.info("====================================")
     
     return {
         "stress_level": stress_level.title(),  # "Low", "Moderate", "High"
