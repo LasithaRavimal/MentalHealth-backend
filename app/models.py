@@ -174,3 +174,5 @@ class EmailConfigResponse(BaseModel):
 class Message(BaseModel):
     message: str
 
+
+
