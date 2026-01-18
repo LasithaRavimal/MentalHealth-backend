@@ -13,9 +13,14 @@ from app.db import connect_db, close_db
 from app.music.ml_service import load_models
 from app.routes import auth_routes, music_admin_routes, song_routes, session_routes, playlist_routes
 from app.music.session_cleanup import cleanup_inactive_sessions
+
 from app.sde.ml_service import  load_sde_model
 from starlette.concurrency import run_in_threadpool
 from app.routes import sde_routes
+
+from app.vision.face_service import load_face_model
+from app.routes import face_routes
+
 
 
 # Suppress bcrypt warnings
@@ -64,7 +69,11 @@ app.include_router(song_routes.router, prefix=API_V1_PREFIX)
 app.include_router(session_routes.router, prefix=API_V1_PREFIX)
 app.include_router(playlist_routes.router, prefix=API_V1_PREFIX)
 app.include_router(music_admin_routes.router, prefix=API_V1_PREFIX)
+
 app.include_router(sde_routes.router, prefix=API_V1_PREFIX)
+
+app.include_router(face_routes.router, prefix=API_V1_PREFIX)
+
 
 
 
@@ -100,12 +109,22 @@ async def startup_event():
         raise
     
     # Load ML models
-    try:
-        load_models()
-        logger.info("ML models loaded successfully")
-    except Exception as e:
-        logger.warning(f"Failed to load ML models: {e}")
-        logger.warning("API will continue, but predictions will fail until models are available")
+  # Load ML models
+try:
+    load_models()
+
+    # Load Face Emotion model (Keras)
+    if load_face_model():
+        logger.info("Face emotion model loaded successfully")
+    else:
+        logger.warning("Face emotion model NOT loaded (file missing?)")
+
+    logger.info("ML models loaded successfully")
+except Exception as e:
+    logger.warning(f"Failed to load ML models: {e}")
+    logger.warning("API will continue, but predictions will fail until models are available")
+    # Don't raise - allow API to start without models
+
         # Don't raise - allow API to start without models
 
     # Load SDE model (Schizophrenia detection)

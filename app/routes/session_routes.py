@@ -125,6 +125,17 @@ async def end_session(
     # Get aggregated data
     aggregated_data = session_data.aggregated_data.dict()
     
+    print("\n========== SESSION AGGREGATED FEATURES ==========")
+    print("Song Category Mode      :", aggregated_data.get("song_category_mode"))
+    print("Skip Rate Bucket        :", aggregated_data.get("skip_rate_bucket"))
+    print("Repeat Bucket           :", aggregated_data.get("repeat_bucket"))
+    print("Duration Ratio Bucket   :", aggregated_data.get("duration_ratio_bucket"))
+    print("Session Length Bucket   :", aggregated_data.get("session_length_bucket"))
+    print("Volume Level Bucket     :", aggregated_data.get("volume_level_bucket"))
+    print("Song Diversity Bucket   :", aggregated_data.get("song_diversity_bucket"))
+    print("Listening Time Of Day   :", aggregated_data.get("listening_time_of_day"))
+    print("=================================================\n")
+    
     # Get predictions from ML service
     try:
         predictions = predict_session(aggregated_data)
