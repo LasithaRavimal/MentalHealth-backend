@@ -17,11 +17,9 @@ from app.music.session_cleanup import cleanup_inactive_sessions
 
 
 from app.ml.voice_predictor import load_voice_models
-
 from app.sde.ml_service import  load_sde_model
 from starlette.concurrency import run_in_threadpool
 from app.routes import sde_routes
-
 from app.vision.face_service import load_face_model
 from app.routes import face_routes
 
@@ -77,10 +75,7 @@ app.include_router(music_admin_routes.router, prefix=API_V1_PREFIX)
 
 #voice route
 app.include_router(voice_routes.router, prefix=API_V1_PREFIX)
-
-
 app.include_router(sde_routes.router, prefix=API_V1_PREFIX)
-
 app.include_router(face_routes.router, prefix=API_V1_PREFIX)
 
 
