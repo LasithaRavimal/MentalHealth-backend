@@ -217,3 +217,25 @@ class VoiceAnalysisHistoryResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class VoiceTrendPrediction(BaseModel):
+    """Aggregated mental health predictions over a period"""
+    depression_level: str
+    depression_score: float
+    anxiety_level: str
+    anxiety_score: float
+    stress_level: str
+    stress_score: float
+    overall_prediction: str
+
+class VoiceTrendResponse(BaseModel):
+    """Response model for voice analysis trend"""
+    period_weeks: int
+    start_date: datetime
+    end_date: datetime
+    total_analyses: int
+    average_predictions: Optional[VoiceTrendPrediction] = None
+    trend_summary: str
+    
+    class Config:
+        from_attributes = True
