@@ -217,3 +217,34 @@ class VoiceAnalysisHistoryResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class FaceEmotionSessionCreate(BaseModel):
+    dominant_emotion: str
+    emotion_counts: Dict[str, int]
+    emotion_percentages: Dict[str, int]
+    total_detections: int
+    duration_seconds: int
+    session_started_at: Optional[datetime] = None
+    session_ended_at: Optional[datetime] = None
+
+
+class FaceEmotionSessionResponse(BaseModel):
+    id: str
+    user_id: str
+    dominant_emotion: str
+    emotion_counts: Dict[str, int]
+    emotion_percentages: Dict[str, int]
+    total_detections: int
+    duration_seconds: int
+    session_started_at: Optional[datetime] = None
+    session_ended_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class FaceEmotionHistoryResponse(BaseModel):
+    sessions: List[FaceEmotionSessionResponse]
+    total: int
+    weekly_summary: Dict[str, Any]
