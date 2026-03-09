@@ -162,8 +162,8 @@ async def end_session(
     )
     
     # Send email alerts if high stress or depression detected
-    stress_level = predictions.get("stress_level", "").lower()
-    depression_level = predictions.get("depression_level", "").lower()
+    stress_level = str(predictions.get("stress_level", "")).replace("[","").replace("]","").replace("'","").lower()
+    depression_level = str(predictions.get("depression_level", "")).replace("[","").replace("]","").replace("'","").lower()
     user_email = current_user.get("email", "")
     
     if stress_level == "high" or depression_level == "high":

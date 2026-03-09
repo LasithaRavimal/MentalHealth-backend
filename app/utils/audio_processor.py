@@ -7,6 +7,7 @@ import logging
 import tempfile
 import os
 import traceback
+import noisereduce as nr
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,19 @@ def process_audio_file(audio_bytes: bytes) -> Tuple[Dict[str, np.ndarray], float
             raise ValueError(f"Audio too short. Minimum duration is {MIN_DURATION} seconds, got {duration:.2f}s")
         if duration > MAX_DURATION:
             raise ValueError(f"Audio too long. Maximum duration is {MAX_DURATION} seconds, got {duration:.2f}s")
+        
+        # 1. Silence Detection
+        logger.info("Checking for silence...")
+        rms = librosa.feature.rms(y=y)
+        mean_rms = float(np.mean(rms))
+        logger.info(f"Audio mean RMS energy: {mean_rms:.5f}")
+        
+        if mean_rms < 0.005:
+            raise ValueError("Audio is mostly silence. Please speak clearly.")
+            
+        # 2. Noise Reduction
+        logger.info("Applying noise reduction...")
+        y = nr.reduce_noise(y=y, sr=sr, stationary=True)
         
         # Extract features
         logger.info("Extracting features...")
