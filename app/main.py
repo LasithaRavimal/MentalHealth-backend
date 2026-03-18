@@ -34,6 +34,7 @@ from app.routes import (
     voice_routes,
     sde_routes,
     face_routes,
+    face_history_routes,
 )
 
 # -------------------------
@@ -93,6 +94,7 @@ app.include_router(music_admin_routes.router, prefix=API_V1_PREFIX)
 app.include_router(voice_routes.router, prefix=API_V1_PREFIX)
 app.include_router(sde_routes.router, prefix=API_V1_PREFIX)
 app.include_router(face_routes.router, prefix=API_V1_PREFIX)
+app.include_router(face_history_routes.router, prefix=API_V1_PREFIX)
 
 # -------------------------
 # Lifecycle

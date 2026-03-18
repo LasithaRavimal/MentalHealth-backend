@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from typing import List
-from datetime import datetime
+from datetime import datetime, timedelta
 from bson import ObjectId
 import io
 import logging
 
 from app.auth import get_current_user
 from app.db import get_db, VOICE_ANALYSIS_COLLECTION
-from app.models import VoiceAnalysisResponse, VoiceAnalysisHistoryResponse, Message
+from app.models import VoiceAnalysisResponse, VoiceAnalysisHistoryResponse, Message, VoiceTrendResponse, VoiceTrendPrediction
 from app.utils.audio_processor import process_audio_file, validate_audio_file
-from app.ml.voice_predictor import predict_mental_health
+from app.ml.voice_predictor import predict_mental_health, score_to_level
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/voice", tags=["voice-analysis"])
@@ -130,6 +130,100 @@ async def get_analysis_history(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch analysis history"
+        )
+
+
+@router.get("/trend", response_model=VoiceTrendResponse)
+async def get_voice_trend(
+    weeks: int = 1,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get user's voice analysis trend over a given period (weeks).
+    
+    - **weeks**: Number of weeks to analyze (1, 2, 3, or 4). Default is 1.
+    """
+    try:
+        if weeks not in [1, 2, 3, 4]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Period must be 1, 2, 3, or 4 weeks"
+            )
+            
+        db = get_db()
+        user_id = ObjectId(current_user["id"])
+        
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(weeks=weeks)
+        
+        # Get analyses in the time period
+        analyses_cursor = db[VOICE_ANALYSIS_COLLECTION].find({
+            "user_id": user_id,
+            "analyzed_at": {"$gte": start_date, "$lte": end_date}
+        })
+        
+        analyses = list(analyses_cursor)
+        total = len(analyses)
+        
+        if total == 0:
+            return VoiceTrendResponse(
+                period_weeks=weeks,
+                start_date=start_date,
+                end_date=end_date,
+                total_analyses=0,
+                average_predictions=None,
+                trend_summary="No voice analyses found in the specified period."
+            )
+            
+        # Aggregate scores
+        dep_scores = []
+        anx_scores = []
+        str_scores = []
+        
+        for doc in analyses:
+            pred = doc.get("prediction", {})
+            dep_scores.append(pred.get("depression_score", 0))
+            anx_scores.append(pred.get("anxiety_score", 0))
+            str_scores.append(pred.get("stress_score", 0))
+            
+        avg_dep = sum(dep_scores) / total if total > 0 else 0
+        avg_anx = sum(anx_scores) / total if total > 0 else 0
+        avg_str = sum(str_scores) / total if total > 0 else 0
+        
+        avg_dep_level = score_to_level(avg_dep)
+        avg_anx_level = score_to_level(avg_anx)
+        avg_str_level = score_to_level(avg_str)
+        
+        # Overall summary
+        overall_score = (avg_dep + avg_anx + avg_str) / 3
+        overall_level = score_to_level(overall_score)
+        
+        trend_summary = f"Over the past {weeks} week(s), your overall mental health indicator is {overall_level} based on {total} voice analyses."
+        
+        return VoiceTrendResponse(
+            period_weeks=weeks,
+            start_date=start_date,
+            end_date=end_date,
+            total_analyses=total,
+            average_predictions=VoiceTrendPrediction(
+                depression_level=avg_dep_level,
+                depression_score=avg_dep,
+                anxiety_level=avg_anx_level,
+                anxiety_score=avg_anx,
+                stress_level=avg_str_level,
+                stress_score=avg_str,
+                overall_prediction=overall_level
+            ),
+            trend_summary=trend_summary
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching trend for user {current_user['id']}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch analysis trend"
         )
 
 

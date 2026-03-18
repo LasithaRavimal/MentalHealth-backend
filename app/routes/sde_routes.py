@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, HTTPException
 import shutil
 import os
 
@@ -11,17 +11,26 @@ router = APIRouter(
 
 @router.post("/predict")
 async def predict_sde(file: UploadFile = File(...)):
-    """
-    Predict schizophrenia-related EEG patterns from uploaded CSV file
-    """
-    os.makedirs("temp", exist_ok=True)
-    temp_path = f"temp/{file.filename}"
+    # ✅ DEBUG: confirms request reached backend
+    print("✅ FILE RECEIVED:", file.filename)
 
-    with open(temp_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # ✅ Validate file type
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV files are allowed")
+
+    os.makedirs("temp", exist_ok=True)
+    temp_path = os.path.join("temp", file.filename)
 
     try:
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # 🔥 Call ML pipeline
         return predict_schizophrenia(temp_path)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
