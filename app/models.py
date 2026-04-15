@@ -193,8 +193,6 @@ class VoicePrediction(BaseModel):
     """Mental health predictions from voice analysis"""
     depression_level: str  # "Low", "Moderate", "High"
     depression_score: float  # 0-1
-    anxiety_level: str  # "Low", "Moderate", "High"
-    anxiety_score: float  # 0-1
     stress_level: str  # "Low", "Moderate", "High"
     stress_score: float  # 0-1
     confidence: float  # Overall confidence of predictions
@@ -222,8 +220,6 @@ class VoiceTrendPrediction(BaseModel):
     """Aggregated mental health predictions over a period"""
     depression_level: str
     depression_score: float
-    anxiety_level: str
-    anxiety_score: float
     stress_level: str
     stress_score: float
     overall_prediction: str

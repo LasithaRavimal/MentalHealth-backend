@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from typing import List
 from datetime import datetime, timedelta
 from bson import ObjectId
-import io
 import logging
 
 from app.auth import get_current_user
@@ -46,8 +44,6 @@ async def analyze_voice(
             "prediction": {
                 "depression_level": prediction["depression_level"],
                 "depression_score": prediction["depression_score"],
-                "anxiety_level": prediction["anxiety_level"],
-                "anxiety_score": prediction["anxiety_score"],
                 "stress_level": prediction["stress_level"],
                 "stress_score": prediction["stress_score"],
                 "confidence": prediction["confidence"]
@@ -177,25 +173,21 @@ async def get_voice_trend(
             
         # Aggregate scores
         dep_scores = []
-        anx_scores = []
         str_scores = []
         
         for doc in analyses:
             pred = doc.get("prediction", {})
             dep_scores.append(pred.get("depression_score", 0))
-            anx_scores.append(pred.get("anxiety_score", 0))
             str_scores.append(pred.get("stress_score", 0))
             
         avg_dep = sum(dep_scores) / total if total > 0 else 0
-        avg_anx = sum(anx_scores) / total if total > 0 else 0
         avg_str = sum(str_scores) / total if total > 0 else 0
         
         avg_dep_level = score_to_level(avg_dep)
-        avg_anx_level = score_to_level(avg_anx)
         avg_str_level = score_to_level(avg_str)
         
         # Overall summary
-        overall_score = (avg_dep + avg_anx + avg_str) / 3
+        overall_score = (avg_dep + avg_str) / 2
         overall_level = score_to_level(overall_score)
         
         trend_summary = f"Over the past {weeks} week(s), your overall mental health indicator is {overall_level} based on {total} voice analyses."
@@ -208,8 +200,6 @@ async def get_voice_trend(
             average_predictions=VoiceTrendPrediction(
                 depression_level=avg_dep_level,
                 depression_score=avg_dep,
-                anxiety_level=avg_anx_level,
-                anxiety_score=avg_anx,
                 stress_level=avg_str_level,
                 stress_score=avg_str,
                 overall_prediction=overall_level
