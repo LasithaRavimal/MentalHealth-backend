@@ -11,10 +11,11 @@ logger = logging.getLogger(__name__)
 
 # Global variables for loaded models
 depression_model = None  # Keras model for depression
-stress_model = None
+stress_model = None  # SVM model for stress
 depression_scaler = None  # Scaler for depression model
 depression_label_encoder = None  # Label encoder for depression model
-feature_scaler = None  # Scaler for stress model
+stress_scaler = None  # Scaler for stress model
+stress_label_encoder = None  # Label encoder for stress model
 
 # Model paths
 MODELS_DIR = Path(__file__).parent.parent / "ml" / "voice_models"
@@ -26,12 +27,13 @@ def load_voice_models():
     Call this during app startup.
     """
     global depression_model, stress_model
-    global feature_scaler, depression_scaler, depression_label_encoder
+    global depression_scaler, depression_label_encoder
+    global stress_scaler, stress_label_encoder
 
     try:
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
-        # Load depression model artifacts
+        # ── Load depression model artifacts ─────────────────────────
         depression_h5_path = MODELS_DIR / "depression_detection_model.h5"
         depression_scaler_path = MODELS_DIR / "scaler.pkl"
         depression_encoder_path = MODELS_DIR / "label_encoder.pkl"
@@ -58,21 +60,43 @@ def load_voice_models():
         else:
             logger.warning(f"Depression label encoder not found at: {depression_encoder_path}")
 
-        # Load optional stress model
-        stress_path = MODELS_DIR / "stress_voice_model.pkl"
-        scaler_path = MODELS_DIR / "voice_feature_scaler.pkl"
+        # ── Load stress model artifacts ─────────────────────────────
+        stress_model_path = MODELS_DIR / "stress_model.pkl"
+        stress_scaler_path = MODELS_DIR / "stress_scaler.pkl"
+        stress_encoder_path = MODELS_DIR / "stress_label_encoder.pkl"
 
-        if stress_path.exists():
-            stress_model = joblib.load(stress_path)
-            logger.info("Stress voice model loaded")
+        if stress_model_path.exists():
+            with open(stress_model_path, "rb") as f:
+                stress_model = pickle.load(f)
+            logger.info("Stress SVM model loaded")
+        else:
+            logger.warning(f"Stress model not found at: {stress_model_path}")
 
-        if scaler_path.exists():
-            feature_scaler = joblib.load(scaler_path)
-            logger.info("Feature scaler loaded")
+        if stress_scaler_path.exists():
+            with open(stress_scaler_path, "rb") as f:
+                stress_scaler = pickle.load(f)
+            logger.info(f"Stress scaler loaded (expects {stress_scaler.n_features_in_} features)")
+        else:
+            logger.warning(f"Stress scaler not found at: {stress_scaler_path}")
 
+        if stress_encoder_path.exists():
+            with open(stress_encoder_path, "rb") as f:
+                stress_label_encoder = pickle.load(f)
+            logger.info(
+                f"Stress label encoder loaded. Classes: {stress_label_encoder.classes_}"
+            )
+        else:
+            logger.warning(f"Stress label encoder not found at: {stress_encoder_path}")
+
+        # ── Validation ──────────────────────────────────────────────
         if not depression_model:
             logger.error(
                 "CRITICAL: Depression model not loaded. "
+                f"Place these files in: {MODELS_DIR}"
+            )
+        if not stress_model:
+            logger.error(
+                "CRITICAL: Stress model not loaded. "
                 f"Place these files in: {MODELS_DIR}"
             )
 
@@ -109,32 +133,50 @@ def prepare_features_for_depression(features: Dict) -> np.ndarray:
     return X
 
 
-def prepare_features_for_prediction(features: Dict) -> np.ndarray:
+def prepare_features_for_stress(features: Dict) -> np.ndarray:
     """
-    Prepare extracted features for stress model prediction.
+    Prepare features for the stress SVM model.
+    Stress model expects 86 features:
+      - MFCC mean (40) + MFCC std (40) = 80
+      - ZCR mean + ZCR std = 2
+      - RMS Energy mean + RMS Energy std = 2
+      - Pitch/F0 mean + Pitch/F0 std = 2
+    Total: 86 dimensions (matching the SVM_stress training pipeline)
     """
     feature_vector = []
 
-    feature_vector.extend(features["mfcc_mean"][:13])
-    feature_vector.extend(features["mfcc_std"][:13])
+    # 1) MFCC mean (40 dims)
+    mfcc_mean = features["mfcc_mean"]
+    if len(mfcc_mean) < 40:
+        mfcc_mean = np.pad(mfcc_mean, (0, 40 - len(mfcc_mean)), mode="constant")
+    elif len(mfcc_mean) > 40:
+        mfcc_mean = mfcc_mean[:40]
+    feature_vector.extend(mfcc_mean)
 
+    # 2) MFCC std (40 dims)
+    mfcc_std = features["mfcc_std"]
+    if len(mfcc_std) < 40:
+        mfcc_std = np.pad(mfcc_std, (0, 40 - len(mfcc_std)), mode="constant")
+    elif len(mfcc_std) > 40:
+        mfcc_std = mfcc_std[:40]
+    feature_vector.extend(mfcc_std)
+
+    # 3) ZCR mean + std (2 dims)
+    feature_vector.append(features.get("zcr_mean", 0.0))
+    feature_vector.append(features.get("zcr_std", 0.0))
+
+    # 4) RMS Energy mean + std (2 dims)
+    feature_vector.append(features.get("energy_mean", 0.0))
+    feature_vector.append(features.get("energy_std", 0.0))
+
+    # 5) Pitch/F0 mean + std (2 dims)
     feature_vector.append(features.get("pitch_mean", 0.0))
     feature_vector.append(features.get("pitch_std", 0.0))
 
-    feature_vector.append(features["energy_mean"])
-    feature_vector.append(features["energy_std"])
-
-    feature_vector.append(features["zcr_mean"])
-    feature_vector.append(features["zcr_std"])
-
-    feature_vector.append(features["spectral_centroid_mean"])
-    feature_vector.append(features["spectral_centroid_std"])
-    feature_vector.append(features["spectral_rolloff_mean"])
-
     X = np.array(feature_vector).reshape(1, -1)
 
-    if feature_scaler is not None:
-        X = feature_scaler.transform(X)
+    if stress_scaler is not None:
+        X = stress_scaler.transform(X)
 
     return X
 
@@ -189,6 +231,71 @@ def predict_depression_keras(features: Dict) -> Dict:
         raise
 
 
+def predict_stress_svm(features: Dict) -> Dict:
+    """
+    Predict stress level using the SVM model with proper feature preparation,
+    scaler, and label encoder.
+    """
+    try:
+        X = prepare_features_for_stress(features)
+
+        # Get class probabilities and prediction
+        stress_proba = stress_model.predict_proba(X)[0]
+        stress_pred = stress_model.predict(X)[0]
+
+        # Use the label encoder to decode the predicted class
+        if stress_label_encoder is not None:
+            # stress_pred is the encoded integer; decode it
+            predicted_class = stress_label_encoder.inverse_transform([stress_pred])[0]
+
+            # Build probabilities dict using encoder classes
+            stress_probabilities = {
+                str(label): float(stress_proba[i])
+                for i, label in enumerate(stress_label_encoder.classes_)
+            }
+        else:
+            predicted_class = str(stress_pred)
+            stress_probabilities = {}
+
+        # Map class name (e.g. "Stress_high") to a clean level
+        level_map = {
+            "stress_low": "Low",
+            "stress_medium": "Moderate",
+            "stress_high": "High",
+        }
+        stress_level = level_map.get(predicted_class.lower(), predicted_class)
+
+        # Confidence is the probability of the predicted class
+        confidence = float(np.max(stress_proba))
+
+        # Stress score: sum of moderate + high probabilities
+        stress_score = confidence
+        if stress_label_encoder is not None:
+            classes_lower = [c.lower() for c in stress_label_encoder.classes_]
+            high_prob = 0.0
+            medium_prob = 0.0
+            if "stress_high" in classes_lower:
+                high_prob = float(stress_proba[classes_lower.index("stress_high")])
+            if "stress_medium" in classes_lower:
+                medium_prob = float(stress_proba[classes_lower.index("stress_medium")])
+            stress_score = high_prob + medium_prob
+
+        logger.info(
+            f"Stress prediction: {stress_level} (confidence: {confidence:.2f})"
+        )
+
+        return {
+            "stress_level": stress_level,
+            "stress_score": stress_score,
+            "stress_confidence": confidence,
+            "stress_probabilities": stress_probabilities,
+        }
+
+    except Exception as e:
+        logger.error(f"Error in SVM stress prediction: {e}")
+        raise
+
+
 def predict_mental_health(features: Dict) -> Dict:
     """
     Predict depression and stress levels from voice features.
@@ -202,6 +309,7 @@ def predict_mental_health(features: Dict) -> Dict:
     try:
         predictions = {}
 
+        # ── Depression prediction ──────────────────────────────────
         if (
             depression_model is not None
             and depression_scaler is not None
@@ -216,13 +324,12 @@ def predict_mental_health(features: Dict) -> Dict:
             predictions["depression_level"] = score_to_level(predictions["depression_score"])
             predictions["depression_confidence"] = 0.5
 
-        if stress_model is not None:
-            X = prepare_features_for_prediction(features)
-            stress_proba = stress_model.predict_proba(X)[0]
-            stress_pred = stress_model.predict(X)[0]
-            predictions["stress_score"] = float(np.max(stress_proba))
-            predictions["stress_level"] = map_to_level(stress_pred)
+        # ── Stress prediction ──────────────────────────────────────
+        if stress_model is not None and stress_scaler is not None:
+            stress_results = predict_stress_svm(features)
+            predictions.update(stress_results)
         else:
+            logger.warning("Using dummy stress prediction - model not loaded")
             energy_mean = features["energy_mean"]
             predictions["stress_score"] = min(energy_mean * 10, 1.0)
             predictions["stress_level"] = score_to_level(predictions["stress_score"])
