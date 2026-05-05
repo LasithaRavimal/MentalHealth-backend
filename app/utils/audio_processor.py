@@ -24,8 +24,7 @@ VAD_MIN_SPEECH_RATIO = 0.20   # at least 20% of frames must be active speech
 VAD_MIN_ACTIVE_DB   = -28.0   # mean dB of active frames must exceed this
 
 # Spectral flatness thresholds
-# Codec noise / silence: flatness close to 1.0 (energy spread flat across all bins)
-# Real speech:           flatness well below 0.3 (energy concentrated in formants)
+
 FLATNESS_MAX_MEAN   = 0.60   # reject if mean flatness exceeds this
 FLATNESS_MIN_VOICED = 0.10   # min fraction of frames that look "voiced" (flatness < 0.3)
 
@@ -41,14 +40,7 @@ def validate_audio_file(audio_bytes: bytes, filename: str) -> Optional[str]:
 
 
 def _detect_voice_activity(y: np.ndarray, sr: int) -> tuple[float, float]:
-    """
-    Frame-level energy VAD.
-
-    Returns
-    -------
-    speech_ratio   : fraction of frames with active speech (0.0 – 1.0)
-    mean_active_db : mean dB level of active frames (-80.0 if none found)
-    """
+    
     frame_length = int(sr * 0.025)  # 25 ms
     hop_length   = int(sr * 0.010)  # 10 ms
 
@@ -69,17 +61,7 @@ def _detect_voice_activity(y: np.ndarray, sr: int) -> tuple[float, float]:
 
 
 def _check_spectral_flatness(y: np.ndarray, sr: int) -> tuple[float, float]:
-    """
-    Spectral flatness distinguishes real speech from codec noise / silence.
-
-    Codec noise / silence → flatness ≈ 0.8–1.0  (energy uniformly spread)
-    Real speech           → flatness ≈ 0.05–0.25 (energy in narrow formant bands)
-
-    Returns
-    -------
-    mean_flatness   : mean spectral flatness across all frames (0.0 – 1.0)
-    voiced_ratio    : fraction of frames with flatness < 0.3 (speech-like)
-    """
+    
     hop_length = int(sr * 0.010)  # 10 ms hop matches VAD
 
     flatness = librosa.feature.spectral_flatness(y=y, hop_length=hop_length)[0]
@@ -140,9 +122,7 @@ def process_audio_file(
             )
 
         # ── Pre-normalization silence check ───────────────────────────────────
-        # Catches truly flat / all-zero audio after codec decode.
-        # Thresholds are very low because browser .webm speech can have
-        # raw RMS as low as ~0.00003 due to MediaRecorder compression.
+        
         logger.info("Checking for silence (pre-normalization)...")
         max_amp      = np.max(np.abs(y))
         raw_rms      = librosa.feature.rms(y=y)
@@ -165,10 +145,7 @@ def process_audio_file(
         logger.info("Audio normalized (peak was %.8f)", max_amp)
 
         # ── Spectral flatness check (BEFORE noise reduction) ──────────────────
-        # Run this on the raw normalized signal so codec noise hasn't been
-        # removed yet — that's exactly what we want to detect here.
-        # Silent/noise-only recordings are spectrally flat (flatness ≈ 0.8–1.0).
-        # Real speech has structured formants (flatness ≈ 0.05–0.25).
+       
         logger.info("Checking spectral flatness...")
         mean_flatness, voiced_ratio = _check_spectral_flatness(y, sr)
 
