@@ -1,7 +1,5 @@
 import librosa
 import numpy as np
-import soundfile as sf
-import io
 from typing import Tuple, Dict, Optional
 import logging
 import tempfile
@@ -13,17 +11,15 @@ logger = logging.getLogger(__name__)
 
 # Audio constraints
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-MIN_DURATION = 3  # seconds (reduced for depression model)
+MIN_DURATION = 3  # seconds
 MAX_DURATION = 120  # seconds
 SAMPLE_RATE = 22050  # Standard for speech analysis
-N_MFCC = 40  # Changed to 40 for depression model
+N_MFCC = 40  # Changed to 40 for depression,stress models
+ALLOWED_EXTENSIONS = (".wav", ".mp3", ".m4a", ".ogg", ".flac", ".webm")
 
 
 def validate_audio_file(audio_bytes: bytes, filename: str) -> Optional[str]:
-    """
-    Validate audio file size and format.
-    Returns error message if invalid, None if valid.
-    """
+    
     # Check file size
     if len(audio_bytes) > MAX_FILE_SIZE:
         return f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB"
@@ -33,32 +29,19 @@ def validate_audio_file(audio_bytes: bytes, filename: str) -> Optional[str]:
         return "Audio file appears to be empty"
     
     # Check file extension
-    allowed_extensions = ['.wav', '.mp3', '.m4a', '.ogg', '.flac', '.webm']
-    if not any(filename.lower().endswith(ext) for ext in allowed_extensions):
-        return f"Invalid file format. Allowed formats: {', '.join(allowed_extensions)}"
+    if not any(filename.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS):
+        return f"Invalid file format. Allowed formats: {', '.join(ALLOWED_EXTENSIONS)}"
     
     return None
 
 
 def process_audio_file(audio_bytes: bytes) -> Tuple[Dict[str, np.ndarray], float]:
-    """
-    Process audio file and extract voice features.
-    
-    Args:
-        audio_bytes: Raw audio file bytes
-        
-    Returns:
-        Tuple of (features_dict, duration_in_seconds)
-        
-    Raises:
-        ValueError: If audio processing fails
-    """
+   
     temp_file = None
     try:
         logger.info(f"Starting audio processing, file size: {len(audio_bytes)} bytes")
         
-        # Create a temporary file to work around librosa's BytesIO issues with OGG
-        # This is necessary because librosa uses audioread/ffmpeg which needs file paths for certain formats
+        #saving the audio to a temporary file on the disk so Librosa can access it via a standard file path.
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.ogg')
         temp_file.write(audio_bytes)
         temp_file.close()
@@ -80,23 +63,27 @@ def process_audio_file(audio_bytes: bytes) -> Tuple[Dict[str, np.ndarray], float
         if duration > MAX_DURATION:
             raise ValueError(f"Audio too long. Maximum duration is {MAX_DURATION} seconds, got {duration:.2f}s")
         
-        # 1. Normalize audio (browser MediaRecorder + Opus codec produces very low gain)
-        logger.info("Normalizing audio...")
-        max_amp = np.max(np.abs(y))
-        if max_amp > 0:
-            y = y / max_amp
-            logger.info(f"Audio normalized (peak was {max_amp:.5f})")
-        
-        # 2. Silence Detection (after normalization for accurate measurement)
+        # Silence Detection (before normalization, using raw audio levels)
         logger.info("Checking for silence...")
-        rms = librosa.feature.rms(y=y)
-        mean_rms = float(np.mean(rms))
-        logger.info(f"Audio mean RMS energy (normalized): {mean_rms:.5f}")
+        max_amp = np.max(np.abs(y))
+        logger.info(f"Audio peak amplitude: {max_amp:.6f}")
         
-        if mean_rms < 0.001:
+        if max_amp < 1e-6:
+            raise ValueError("Audio is silence. Please speak clearly.")
+        
+        raw_rms = librosa.feature.rms(y=y)
+        raw_mean_rms = float(np.mean(raw_rms))
+        logger.info(f"Audio mean RMS energy (raw): {raw_mean_rms:.6f}")
+        
+        if raw_mean_rms < 0.0005:
             raise ValueError("Audio is mostly silence. Please speak clearly.")
+        
+        # Normalize audio
+        logger.info("Normalizing audio...")
+        y = y / max_amp
+        logger.info(f"Audio normalized (peak was {max_amp:.6f})")
             
-        # 3. Noise Reduction
+        #Noise Reduction
         logger.info("Applying noise reduction...")
         y = nr.reduce_noise(y=y, sr=sr, stationary=True)
         
@@ -129,17 +116,7 @@ def process_audio_file(audio_bytes: bytes) -> Tuple[Dict[str, np.ndarray], float
 
 
 def extract_voice_features(y: np.ndarray, sr: int) -> Dict[str, np.ndarray]:
-    """
-    Extract MFCC and other voice features from audio signal.
-    Now extracts 40 MFCC coefficients for depression model compatibility.
     
-    Args:
-        y: Audio time series
-        sr: Sample rate
-        
-    Returns:
-        Dictionary of extracted features
-    """
     features = {}
     
     try:

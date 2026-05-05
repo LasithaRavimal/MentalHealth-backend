@@ -176,11 +176,11 @@ class Message(BaseModel):
 
 # Voice Analysis Models
 class VoiceAnalysisRequest(BaseModel):
-    """Request model for voice analysis - not used for file upload but for metadata"""
+   
     pass
 
 class VoiceFeatures(BaseModel):
-    """MFCC and other audio features extracted from voice"""
+    #audio features extracted from voice
     mfcc_mean: List[float]
     mfcc_std: List[float]
     pitch_mean: Optional[float] = None
@@ -190,26 +190,24 @@ class VoiceFeatures(BaseModel):
     zero_crossing_rate: Optional[float] = None
 
 class VoicePrediction(BaseModel):
-    """Mental health predictions from voice analysis"""
-    depression_level: str  # "Low", "Moderate", "High"
-    depression_score: float  # 0-1
-    stress_level: str  # "Low", "Moderate", "High"
-    stress_score: float  # 0-1
-    confidence: float  # Overall confidence of predictions
+    #Mental health predictions from voice analysis
+    depression_level: str 
+    stress_level: str 
+    confidence: float 
 
 class VoiceAnalysisResponse(BaseModel):
-    """Response model for voice analysis"""
+    #Response model for voice analysis
     id: str
     user_id: str
     prediction: VoicePrediction
     analyzed_at: datetime
-    audio_duration: float  # seconds
+    audio_duration: float  
     
     class Config:
         from_attributes = True
 
 class VoiceAnalysisHistoryResponse(BaseModel):
-    """Response model for user's voice analysis history"""
+    #Response model for user's voice analysis history
     analyses: List[VoiceAnalysisResponse]
     total: int
     
@@ -217,15 +215,12 @@ class VoiceAnalysisHistoryResponse(BaseModel):
         from_attributes = True
 
 class VoiceTrendPrediction(BaseModel):
-    """Aggregated mental health predictions over a period"""
+    #Aggregated mental health predictions over a period
     depression_level: str
-    depression_score: float
     stress_level: str
-    stress_score: float
-    overall_prediction: str
 
 class VoiceTrendResponse(BaseModel):
-    """Response model for voice analysis trend"""
+    #Response model for voice analysis trend
     period_weeks: int
     start_date: datetime
     end_date: datetime

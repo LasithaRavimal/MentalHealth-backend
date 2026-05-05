@@ -6,16 +6,29 @@ import logging
 from app.auth import get_current_user
 from app.db import get_db, VOICE_ANALYSIS_COLLECTION
 from app.models import VoiceAnalysisResponse, VoiceAnalysisHistoryResponse, Message, VoiceTrendResponse, VoiceTrendPrediction
-from app.utils.audio_processor import process_audio_file, validate_audio_file
-from app.ml.voice_predictor import predict_mental_health, score_to_level
+from app.utils.audio_processor import (
+    ALLOWED_EXTENSIONS,
+    MAX_DURATION,
+    MAX_FILE_SIZE,
+    MIN_DURATION,
+    process_audio_file,
+    validate_audio_file,
+)
+from app.ml.voice_predictor import predict_mental_health
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/voice", tags=["voice-analysis"])
 
-
+#anayze vioce end point
 @router.post("/analyze", response_model=VoiceAnalysisResponse, status_code=status.HTTP_201_CREATED)
 async def analyze_voice(
-    audio: UploadFile = File(..., description="Audio file (WAV, MP3, M4A, OGG - max 10MB, 10-120 seconds)"),
+    audio: UploadFile = File(
+        ...,
+        description=(
+            f"Audio file ({', '.join(ext.upper().lstrip('.') for ext in ALLOWED_EXTENSIONS)} "
+            f"- max {MAX_FILE_SIZE // (1024 * 1024)}MB, {MIN_DURATION}-{MAX_DURATION} seconds)"
+        ),
+    ),
     current_user: dict = Depends(get_current_user)
 ):
     
@@ -43,9 +56,7 @@ async def analyze_voice(
             "user_id": ObjectId(current_user["id"]),
             "prediction": {
                 "depression_level": prediction["depression_level"],
-                "depression_score": prediction["depression_score"],
                 "stress_level": prediction["stress_level"],
-                "stress_score": prediction["stress_score"],
                 "confidence": prediction["confidence"]
             },
             "audio_duration": duration,
@@ -54,7 +65,11 @@ async def analyze_voice(
                 "mfcc_mean": features["mfcc_mean"].tolist(),
                 "mfcc_std": features["mfcc_std"].tolist(),
                 "pitch_mean": features.get("pitch_mean"),
-                "energy_mean": features.get("energy_mean")
+                "pitch_std": features.get("pitch_std"),
+                "energy_mean": features.get("energy_mean"),
+                "energy_std": features.get("energy_std"),
+                "zcr_mean": features.get("zcr_mean"),
+                "zcr_std": features.get("zcr_std"),
             }
         }
         
@@ -80,20 +95,14 @@ async def analyze_voice(
             detail=f"Failed to analyze audio: {str(e)}"
         )
 
-
+#get history of analysis
 @router.get("/history", response_model=VoiceAnalysisHistoryResponse)
 async def get_analysis_history(
     limit: int = 10,
     skip: int = 0,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Get user's voice analysis history.
     
-    - **limit**: Maximum number of results to return (default: 10)
-    - **skip**: Number of results to skip for pagination (default: 0)
-    - Returns list of past voice analyses
-    """
     try:
         db = get_db()
         user_id = ObjectId(current_user["id"])
@@ -128,17 +137,12 @@ async def get_analysis_history(
             detail="Failed to fetch analysis history"
         )
 
-
+#trend analysis end point
 @router.get("/trend", response_model=VoiceTrendResponse)
 async def get_voice_trend(
     weeks: int = 1,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Get user's voice analysis trend over a given period (weeks).
-    
-    - **weeks**: Number of weeks to analyze (1, 2, 3, or 4). Default is 1.
-    """
     try:
         if weeks not in [1, 2, 3, 4]:
             raise HTTPException(
@@ -171,26 +175,24 @@ async def get_voice_trend(
                 trend_summary="No voice analyses found in the specified period."
             )
             
-        # Aggregate scores
-        dep_scores = []
-        str_scores = []
+        # Count level occurrences
+        dep_levels = []
+        str_levels = []
         
         for doc in analyses:
             pred = doc.get("prediction", {})
-            dep_scores.append(pred.get("depression_score", 0))
-            str_scores.append(pred.get("stress_score", 0))
+            dep_levels.append(pred.get("depression_level", "Normal"))
+            str_levels.append(pred.get("stress_level", "Low"))
             
-        avg_dep = sum(dep_scores) / total if total > 0 else 0
-        avg_str = sum(str_scores) / total if total > 0 else 0
-        
-        avg_dep_level = score_to_level(avg_dep)
-        avg_str_level = score_to_level(avg_str)
+        # Find most common levels
+        from collections import Counter
+        dep_counter = Counter(dep_levels)
+        str_counter = Counter(str_levels)
+        most_common_dep = dep_counter.most_common(1)[0][0] if dep_counter else "Normal"
+        most_common_str = str_counter.most_common(1)[0][0] if str_counter else "Low"
         
         # Overall summary
-        overall_score = (avg_dep + avg_str) / 2
-        overall_level = score_to_level(overall_score)
-        
-        trend_summary = f"Over the past {weeks} week(s), your overall mental health indicator is {overall_level} based on {total} voice analyses."
+        trend_summary = f"Over the past {weeks} week(s), based on {total} voice analyses: Depression mostly detected as '{most_common_dep}', Stress mostly detected as '{most_common_str}'."
         
         return VoiceTrendResponse(
             period_weeks=weeks,
@@ -198,11 +200,8 @@ async def get_voice_trend(
             end_date=end_date,
             total_analyses=total,
             average_predictions=VoiceTrendPrediction(
-                depression_level=avg_dep_level,
-                depression_score=avg_dep,
-                stress_level=avg_str_level,
-                stress_score=avg_str,
-                overall_prediction=overall_level
+                depression_level=most_common_dep,
+                stress_level=most_common_str,
             ),
             trend_summary=trend_summary
         )
@@ -216,18 +215,13 @@ async def get_voice_trend(
             detail="Failed to fetch analysis trend"
         )
 
-
+#get specific analysis result
 @router.get("/result/{analysis_id}", response_model=VoiceAnalysisResponse)
 async def get_analysis_result(
     analysis_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Get specific voice analysis result by ID.
     
-    - **analysis_id**: ID of the analysis to retrieve
-    - Returns the analysis result if it belongs to the current user
-    """
     try:
         db = get_db()
         
@@ -260,18 +254,13 @@ async def get_analysis_result(
             detail="Failed to fetch analysis result"
         )
 
-
+#delete specific analysis result
 @router.delete("/result/{analysis_id}", response_model=Message)
 async def delete_analysis(
     analysis_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Delete a voice analysis result.
     
-    - **analysis_id**: ID of the analysis to delete
-    - Only the owner can delete their analysis
-    """
     try:
         db = get_db()
         
