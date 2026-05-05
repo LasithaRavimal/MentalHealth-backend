@@ -80,16 +80,23 @@ def process_audio_file(audio_bytes: bytes) -> Tuple[Dict[str, np.ndarray], float
         if duration > MAX_DURATION:
             raise ValueError(f"Audio too long. Maximum duration is {MAX_DURATION} seconds, got {duration:.2f}s")
         
-        # 1. Silence Detection
+        # 1. Normalize audio (browser MediaRecorder + Opus codec produces very low gain)
+        logger.info("Normalizing audio...")
+        max_amp = np.max(np.abs(y))
+        if max_amp > 0:
+            y = y / max_amp
+            logger.info(f"Audio normalized (peak was {max_amp:.5f})")
+        
+        # 2. Silence Detection (after normalization for accurate measurement)
         logger.info("Checking for silence...")
         rms = librosa.feature.rms(y=y)
         mean_rms = float(np.mean(rms))
-        logger.info(f"Audio mean RMS energy: {mean_rms:.5f}")
+        logger.info(f"Audio mean RMS energy (normalized): {mean_rms:.5f}")
         
-        if mean_rms < 0.005:
+        if mean_rms < 0.001:
             raise ValueError("Audio is mostly silence. Please speak clearly.")
             
-        # 2. Noise Reduction
+        # 3. Noise Reduction
         logger.info("Applying noise reduction...")
         y = nr.reduce_noise(y=y, sr=sr, stationary=True)
         
