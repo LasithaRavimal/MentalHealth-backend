@@ -44,7 +44,7 @@ async def analyze_voice(
         
         # Process audio and extract features
         logger.info(f"Processing audio for user {current_user['id']}: {audio.filename}")
-        features, duration = process_audio_file(audio_bytes)
+        features, duration = process_audio_file(audio_bytes, audio.filename)
         
         # Make predictions
         logger.info(f"Making predictions for user {current_user['id']}")
@@ -88,6 +88,17 @@ async def analyze_voice(
         
     except HTTPException:
         raise
+    except ValueError as e:
+        logger.warning(
+            "Invalid audio for user %s (%s): %s",
+            current_user["id"],
+            audio.filename,
+            str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
         logger.error(f"Error analyzing voice for user {current_user['id']}: {str(e)}")
         raise HTTPException(
